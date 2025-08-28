@@ -320,11 +320,14 @@ class PlayerProjectile {
     constructor(x, y, dir) {
         this.position = { x, y };
         this.size = { w: 18, h: 12 };
-        this.velocity = { x: dir * 13.5, y: 0 };
+        // SLOW DOWN PROJECTILE: reduce velocity.x from 13.5 to 6.5
+        this.velocity = { x: dir * 6.5, y: 0 };
         this.dir = dir;
         this.lifetime = 1.3; // seconds
         this.dead = false;
         this._hitEnemies = [];
+        // For spinning animation
+        this._angle = 0;
     }
 
     update(dt, platforms, enemies) {
@@ -384,23 +387,45 @@ class PlayerProjectile {
                 }
             }
         }
+        // Spin the triangle
+        this._angle += dt * 10; // 10 radians/sec = ~1.6 rotations/sec
     }
 
     render(ctx) {
         ctx.save();
         ctx.translate(this.position.x, this.position.y);
-        // Simple: blue oval with white border, directionally oriented
-        ctx.rotate(this.dir === 1 ? 0 : Math.PI);
+        // Rotate for spinning effect
+        ctx.rotate(this._angle);
+
+        // Draw a red equilateral triangle, pointing in the direction of travel
+        // Side length = 22, center at (0,0)
+        const side = 22;
+        const h = side * Math.sqrt(3) / 2; // height of equilateral triangle
+
+        // Orient so that the triangle points in the direction of travel
+        if (this.dir === -1) {
+            ctx.scale(-1, 1);
+        }
+
         ctx.beginPath();
-        ctx.ellipse(0, 0, this.size.w/2, this.size.h/2, 0, 0, 2*Math.PI);
-        ctx.fillStyle = 'hsl(210 80% 65%)';
-        ctx.shadowColor = '#6cf';
-        ctx.shadowBlur = 10;
+        // Top vertex
+        ctx.moveTo(0, -h/2);
+        // Bottom right
+        ctx.lineTo(side/2, h/2);
+        // Bottom left
+        ctx.lineTo(-side/2, h/2);
+        ctx.closePath();
+
+        // Red fill, white border, shadow
+        ctx.fillStyle = "#e53935";
+        ctx.shadowColor = "#ffb3b3";
+        ctx.shadowBlur = 12;
         ctx.fill();
         ctx.shadowBlur = 0;
         ctx.lineWidth = 2.5;
-        ctx.strokeStyle = '#fff';
+        ctx.strokeStyle = "#fff";
         ctx.stroke();
+
         ctx.restore();
     }
 }
