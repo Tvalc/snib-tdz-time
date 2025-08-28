@@ -69,6 +69,53 @@ class Renderer {
         }
 
         ctx.restore();
+
+        // --- PLAYER HEALTH BAR at top under timer ---
+        // Draw health bar at fixed screen position (centered under timer)
+        // Timer is at top left in HUD, so let's draw bar centered at top, under HUD (e.g. y=54)
+        const barW = 210;
+        const barH = 20;
+        const barX = GAME_WIDTH/2 - barW/2;
+        const barY = 54; // HUD is at top (15px padding + ~30px height), so 54px is just under
+
+        const player = this.game.player;
+        const hpFrac = Math.max(0, Math.min(1, player.hitpoints / player.maxHitpoints));
+        // Color: green (full) to yellow to red (low)
+        let hpColor;
+        if (hpFrac > 0.6) {
+            hpColor = "#3ecf3e";
+        } else if (hpFrac > 0.3) {
+            hpColor = "#ffe066";
+        } else {
+            hpColor = "#ff4b3e";
+        }
+        ctx.save();
+        // Outer border
+        ctx.beginPath();
+        ctx.strokeStyle = "#222";
+        ctx.lineWidth = 3.5;
+        ctx.fillStyle = "#fff";
+        ctx.roundRect(barX, barY, barW, barH, 10);
+        ctx.fill();
+        ctx.stroke();
+        // Fill portion
+        ctx.beginPath();
+        ctx.fillStyle = hpColor;
+        ctx.roundRect(barX+3, barY+3, (barW-6)*hpFrac, barH-6, 7);
+        ctx.fill();
+        // Border again for clarity
+        ctx.beginPath();
+        ctx.strokeStyle = "#222";
+        ctx.lineWidth = 1.5;
+        ctx.roundRect(barX, barY, barW, barH, 10);
+        ctx.stroke();
+        // Text: HP value
+        ctx.font = "bold 17px Arial";
+        ctx.fillStyle = "#222";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(`Health: ${player.hitpoints}/${player.maxHitpoints}`, barX + barW/2, barY + barH/2 + 0.5);
+        ctx.restore();
     }
 }
 window.Renderer = Renderer;
