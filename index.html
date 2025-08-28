@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Coinboy Platformer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="1100" height="800"></canvas>
+  <!-- Load entity classes first -->
+  <script src="entities/playerShip.js"></script>
+  <script src="entities/enemyShip.js"></script>
+  <script src="entities/projectile.js"></script>
+  <!-- Then renderer and game loop -->
+  <script src="renderer.js"></script>
+  <script src="gameLoop.js"></script>
+  <!-- Main game logic last -->
+  <script src="main.js"></script>
+
+
+  <!-- Emergency restored scripts -->
+  <script src="./game.js"></script>
+  <!-- End emergency restoration -->
+
+        <div id="ui-overlay"></div>
+    </div>
+    <script src="utils.js"></script>
+    <script src="constants.js"></script>
+    <script src="assetLoader.js"></script>
+    <script src="physicsEngine.js"></script>
+    <script src="collisionSystem.js"></script>
+    <script src="inputHandler.js"></script>
+    <script src="audioManager.js"></script>
+    <script src="uiManager.js"></script>
+    <script src="platform.js"></script>
+    <script src="player.js"></script>
+    <script src="coinboy.js"></script>
+    <script src="doomshroom.js"></script>
+    
+    <script src="stateManager.js"></script>
+    
+    
+</body>
+</html>
