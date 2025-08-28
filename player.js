@@ -32,9 +32,13 @@ class Player {
         // --- Projectiles ---
         this.projectiles = [];
         this._projectileFiredThisAttack = false; // Prevent multiple projectiles per attack
+
+        // --- Hitpoints ---
+        this.maxHitpoints = 100;
+        this.hitpoints = this.maxHitpoints;
     }
     update(input, platforms, dt, enemies) {
-        const { PLAYER_MOVE_SPEED, PLAYER_JUMP_VELOCITY } = window.constants;
+        const { PLAYER_MOVE_SPEED, PLAYER_JUMP_VELOCITY, GAME_WIDTH } = window.constants;
 
         // --- Handle attack input ---
         // Start attack if J pressed and not already attacking
@@ -90,6 +94,29 @@ class Player {
 
         // Track if player is actively pressing left/right for walk animation
         this.isMoving = (input.isDown('ArrowLeft') || input.isDown('KeyA') || input.isDown('ArrowRight') || input.isDown('KeyD'));
+
+        // --- Prevent walking off screen except during scene transition ---
+        // We need to clamp the player's position.x so they cannot walk off the left or right edge,
+        // unless the game is currently waiting for a scene advance (handled in game.js via waitingForSceneAdvance).
+        // We'll check for this flag on the global game object if available.
+        let waitingForSceneAdvance = false;
+        if (window.game && typeof window.game.waitingForSceneAdvance === "boolean") {
+            waitingForSceneAdvance = window.game.waitingForSceneAdvance;
+        }
+        // Only clamp if NOT waiting for scene advance
+        if (!waitingForSceneAdvance) {
+            // Prevent moving off left
+            if (this.position.x < 0) {
+                this.position.x = 0;
+                if (this.velocity.x < 0) this.velocity.x = 0;
+            }
+            // Prevent moving off right
+            if (this.position.x + this.size.w > GAME_WIDTH) {
+                this.position.x = GAME_WIDTH - this.size.w;
+                if (this.velocity.x > 0) this.velocity.x = 0;
+            }
+        }
+        // (If waitingForSceneAdvance, allow walking off right edge for scene transition.)
 
         // Jump
         if (!this.isAttacking && (input.isDown('Space') || input.isDown('ArrowUp') || input.isDown('KeyW')) && this.grounded) {
@@ -282,24 +309,9 @@ class Player {
             proj.render(ctx);
         }
 
-        // // DEBUG: Draw attack hitbox
-        // if (this.isAttacking) {
-        //     ctx.save();
-        //     ctx.strokeStyle = 'rgba(255,0,0,0.5)';
-        //     ctx.lineWidth = 2;
-        //     const { PLAYER_WIDTH, PLAYER_HEIGHT } = window.constants;
-        //     const scale = 1.6;
-        //     const attackW = Math.round(PLAYER_WIDTH * scale * 0.75);
-        //     const attackH = Math.round(PLAYER_HEIGHT * scale * 0.75);
-        //     let hitbox = {
-        //         x: this.position.x + (this.facing === -1 ? this.size.w/2 : -attackW + this.size.w/2),
-        //         y: this.position.y + this.size.h/2 - attackH/2,
-        //         w: attackW,
-        //         h: attackH
-        //     };
-        //     ctx.strokeRect(hitbox.x, hitbox.y, hitbox.w, hitbox.h);
-        //     ctx.restore();
-        // }
+        // --- HEALTH BAR RENDER ---
+        // (REMOVED: health bar above player. Now drawn at top of screen in renderer.js)
+        // (No code here for health bar.)
     }
 }
 
