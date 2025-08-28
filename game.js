@@ -30,7 +30,7 @@ class Game {
         this._waveEnemiesKilled = 0;
         this._waveSpawnBatchMin = 2;
         this._waveSpawnBatchMax = 4;
-        this._waveSpawnDelay = 1.1; // seconds between batches
+        this._waveSpawnDelay = 2.2; // seconds between batches (was 1.1)
         this._waveSpawnTimer = 0;
 
         // Spawn enemies for the first scene
@@ -275,12 +275,21 @@ class Game {
         // Collisions: player vs enemies
         const hitEnemy = window.CollisionSystem.playerVsEnemies(this.player, this.enemies);
         if (hitEnemy && this.player.invulnTimer <= 0) {
-            this.player.lives -= 1;
+            // --- HITPOINTS LOGIC ---
+            // Instead of losing a life, lose hitpoints
+            const DAMAGE = 34; // Tune as desired (3 hits = 102, so about 3 hits to die)
+            this.player.hitpoints -= DAMAGE;
             this.player.invulnTimer = 1.3;
             window.AudioManager.hit();
-            if (this.player.lives <= 0) {
-                this.state = window.StateManager.STATE_GAMEOVER;
-                if (this.onGameOver) this.onGameOver(this.score);
+            if (this.player.hitpoints <= 0) {
+                this.player.lives -= 1;
+                if (this.player.lives > 0) {
+                    // Respawn with full HP
+                    this.player.hitpoints = this.player.maxHitpoints;
+                } else {
+                    this.state = window.StateManager.STATE_GAMEOVER;
+                    if (this.onGameOver) this.onGameOver(this.score);
+                }
             }
         }
     }
