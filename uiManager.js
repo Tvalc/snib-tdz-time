@@ -57,6 +57,7 @@ class UIManager {
             this._hud.id = 'hud';
             this.overlay.appendChild(this._hud);
         }
+        // Remove HP from HUD (now shown as health bar above player)
         this._hud.innerHTML = `
             <div class="hud-section">⏱ Time: ${score.toFixed(1)}s</div>
             <div class="hud-section">❤️ Lives: ${lives}</div>
