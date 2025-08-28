@@ -10,6 +10,8 @@ window.addEventListener('DOMContentLoaded', async function() {
     function startGame() {
         ui.clearUI();
         game = new window.Game();
+        // --- Expose game globally for player.js to check waitingForSceneAdvance ---
+        window.game = game;
         renderer = new window.Renderer(ctx, game);
         loop = new window.GameLoop(game, renderer, ui);
         game.onGameOver = function(score) {
