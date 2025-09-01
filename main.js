@@ -1,6 +1,8 @@
 window.addEventListener('DOMContentLoaded', async function() {
     // Asset loading
     const ui = new window.UIManager();
+    window.ui = ui; // Expose for narrative usage
+    window.UIManager.instance = ui; // For narrative in Game.js
     ui.clearUI();
     const ctx = document.getElementById('game-canvas').getContext('2d');
     ui.overlay.innerHTML = `<div class="ui-panel">Loading assets...</div>`;

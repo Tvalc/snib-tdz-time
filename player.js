@@ -1,7 +1,10 @@
 class Player {
     constructor(x, y) {
-        const { PLAYER_WIDTH, PLAYER_HEIGHT } = window.constants;
-        this.position = { x, y };
+        const { PLAYER_WIDTH, PLAYER_HEIGHT, PLAYER_SPAWN_Y_OFFSET } = window.constants;
+        // --- SPAWN HIGHER: Move player up by PLAYER_SPAWN_Y_OFFSET ---
+        // The default y is GROUND_Y - PLAYER_HEIGHT (so feet at platform top).
+        // We want to spawn 75px higher than that.
+        this.position = { x, y: y - (PLAYER_SPAWN_Y_OFFSET || 0) };
         this.size = { w: PLAYER_WIDTH, h: PLAYER_HEIGHT };
         this.velocity = { x: 0, y: 0 };
         this.grounded = false;
@@ -24,7 +27,7 @@ class Player {
         this.attackTimer = 0;
         this.attackFrame = 0;
         this.ATTACK_DURATION = 0.45; // seconds, matches anim length
-        this.ATTACK_ANIM_FPS = 13; // frames/sec for attack animation
+        this.ATTACK_ANIM_FPS = 7; // SLOWED DOWN: was 13, now 7 frames/sec for attack animation
 
         // Track which enemies have been hit during the current attack
         this._alreadyHitEnemies = [];
@@ -36,6 +39,9 @@ class Player {
         // --- Hitpoints ---
         this.maxHitpoints = 100;
         this.hitpoints = this.maxHitpoints;
+
+        // --- Track attack direction for projectiles ---
+        this._attackProjectileDir = 1; // 1 = right, -1 = left, 0 = up
     }
     update(input, platforms, dt, enemies) {
         const { PLAYER_MOVE_SPEED, PLAYER_JUMP_VELOCITY, GAME_WIDTH } = window.constants;
@@ -43,6 +49,12 @@ class Player {
         // --- Handle attack input ---
         // Start attack if J pressed and not already attacking
         if (!this.isAttacking && (input.isDown('KeyJ') || input.isDown('Keyj'))) {
+            // Determine projectile direction: if W is held, fire up, else normal facing
+            if (input.isDown('KeyW')) {
+                this._attackProjectileDir = 0; // up
+            } else {
+                this._attackProjectileDir = this.facing; // left/right
+            }
             this.isAttacking = true;
             this.attackTimer = 0;
             this.attackFrame = 0;
@@ -119,7 +131,8 @@ class Player {
         // (If waitingForSceneAdvance, allow walking off right edge for scene transition.)
 
         // Jump
-        if (!this.isAttacking && (input.isDown('Space') || input.isDown('ArrowUp') || input.isDown('KeyW')) && this.grounded) {
+        // MODIFIED: Only Space and ArrowUp trigger jump, NOT W
+        if (!this.isAttacking && (input.isDown('Space') || input.isDown('ArrowUp')) && this.grounded) {
             this.velocity.y = PLAYER_JUMP_VELOCITY;
             this.grounded = false;
             window.AudioManager.jump();
@@ -230,12 +243,23 @@ class Player {
     }
 
     _fireProjectile() {
-        // Fire a projectile in the direction the player is facing
+        // Fire a projectile in the direction the player is facing or up if W is held
         // Spawn from player's center, slightly ahead of player
-        const { PLAYER_WIDTH, PLAYER_HEIGHT } = window.constants;
-        const projX = this.position.x + PLAYER_WIDTH / 2 + this.facing * (PLAYER_WIDTH * 0.55);
-        const projY = this.position.y + PLAYER_HEIGHT / 2 - 8;
-        const projDir = this.facing;
+        // --- FIX: Use this.size.w and this.size.h instead of PLAYER_WIDTH/HEIGHT ---
+        const w = this.size.w;
+        const h = this.size.h;
+        let projX, projY, projDir;
+        if (this._attackProjectileDir === 0) {
+            // Fire up
+            projX = this.position.x + w / 2;
+            projY = this.position.y + h / 2 - h * 0.55;
+            projDir = 0; // up
+        } else {
+            // Fire left/right
+            projX = this.position.x + w / 2 + this.facing * (w * 0.55);
+            projY = this.position.y + h / 2 - 8;
+            projDir = this.facing;
+        }
         this.projectiles.push(new PlayerProjectile(projX, projY, projDir));
     }
 
@@ -257,6 +281,9 @@ class Player {
         // Player: use Coop sprite animation frames
         const { w, h } = this.size;
         ctx.save();
+        // --- Apply vertical render offset so feet are always at platform top ---
+        // Coinboy and DoomShroom render at (x + w/2, y + h/2)
+        // Player should do the same, with no extra Y offset
         ctx.translate(this.position.x + w/2, this.position.y + h/2);
 
         // --- MIRROR ATTACK ANIMATION if facing LEFT (was RIGHT) ---
@@ -283,18 +310,13 @@ class Player {
             frame = frames[this.animFrame % frames.length];
         }
         if (frame instanceof window.HTMLImageElement || frame instanceof window.HTMLCanvasElement) {
-            if (this.animState === 'attack' && this.isAttacking) {
-                // Attack: draw bigger, centered on player
-                const { PLAYER_WIDTH, PLAYER_HEIGHT } = window.constants;
-                const scale = 1.6;
-                const bigW = Math.round(PLAYER_WIDTH * scale);
-                const bigH = Math.round(PLAYER_HEIGHT * scale);
-                // If mirrored, shift drawing origin so attack is still in front of player
-                // (No need to shift: both left/right attack frames are pre-mirrored in assetLoader)
-                ctx.drawImage(frame, -bigW/2, -bigH/2, bigW, bigH);
-            } else {
-                ctx.drawImage(frame, -w/2, -h/2, w, h);
-            }
+            // --- SCALE PLAYER SPRITES TO 75% (ALL STATES) ---
+            // Always draw at PLAYER_WIDTH/PLAYER_HEIGHT (already 75% of original)
+            ctx.drawImage(
+                frame,
+                -w/2, -h/2,
+                w, h
+            );
         } else {
             // fallback: blue ellipse
             ctx.fillStyle = 'blue';
@@ -321,7 +343,12 @@ class PlayerProjectile {
         this.position = { x, y };
         this.size = { w: 18, h: 12 };
         // SLOW DOWN PROJECTILE: reduce velocity.x from 13.5 to 6.5
-        this.velocity = { x: dir * 6.5, y: 0 };
+        // If dir is 0, fire up
+        if (dir === 0) {
+            this.velocity = { x: 0, y: -6.5 };
+        } else {
+            this.velocity = { x: dir * 6.5, y: 0 };
+        }
         this.dir = dir;
         this.lifetime = 1.3; // seconds
         this.dead = false;
@@ -377,8 +404,14 @@ class PlayerProjectile {
                         enemy._playerHit = function() {};
                     }
                     if ('velocity' in enemy) {
-                        enemy.velocity.x = this.dir * 9.5;
-                        enemy.velocity.y = -7.5;
+                        // Knockback direction: for up, knock up; else left/right
+                        if (this.dir === 0) {
+                            enemy.velocity.x = 0;
+                            enemy.velocity.y = -11;
+                        } else {
+                            enemy.velocity.x = this.dir * 9.5;
+                            enemy.velocity.y = -7.5;
+                        }
                     }
                     enemy._isDead = true;
                     this._hitEnemies.push(enemy);
@@ -405,6 +438,8 @@ class PlayerProjectile {
         // Orient so that the triangle points in the direction of travel
         if (this.dir === -1) {
             ctx.scale(-1, 1);
+        } else if (this.dir === 0) {
+            ctx.rotate(-Math.PI/2);
         }
 
         ctx.beginPath();

@@ -26,6 +26,19 @@ const coopAttackUrls = [
   "https://dcnmwoxzefwqmvvkpqap.supabase.co/storage/v1/object/public/sprite-studio-exports/0f84fe06-5c42-40c3-b563-1a28d18f37cc/library/Coop_Punch_2_1754021388739.png"
 ];
 
+// --- Enemy Ship 9-frame animation URLs (NEW) ---
+const enemyShipFrameUrls = [
+  "https://dcnmwoxzefwqmvvkpqap.supabase.co/storage/v1/object/public/sprite-studio-exports/0f84fe06-5c42-40c3-b563-1a28d18f37cc/library/Enemy_Ship_1_1753824654660.png",
+  "https://dcnmwoxzefwqmvvkpqap.supabase.co/storage/v1/object/public/sprite-studio-exports/0f84fe06-5c42-40c3-b563-1a28d18f37cc/library/Enemy_Ship_2_1753824672446.png",
+  "https://dcnmwoxzefwqmvvkpqap.supabase.co/storage/v1/object/public/sprite-studio-exports/0f84fe06-5c42-40c3-b563-1a28d18f37cc/library/Enemy_Ship_3_1753824680227.png",
+  "https://dcnmwoxzefwqmvvkpqap.supabase.co/storage/v1/object/public/sprite-studio-exports/0f84fe06-5c42-40c3-b563-1a28d18f37cc/library/Enemy_Ship_4_1753824688771.png",
+  "https://dcnmwoxzefwqmvvkpqap.supabase.co/storage/v1/object/public/sprite-studio-exports/0f84fe06-5c42-40c3-b563-1a28d18f37cc/library/Enemy_Ship_5_1753824699044.png",
+  "https://dcnmwoxzefwqmvvkpqap.supabase.co/storage/v1/object/public/sprite-studio-exports/0f84fe06-5c42-40c3-b563-1a28d18f37cc/library/Enemy_Ship_6_1753824709971.png",
+  "https://dcnmwoxzefwqmvvkpqap.supabase.co/storage/v1/object/public/sprite-studio-exports/0f84fe06-5c42-40c3-b563-1a28d18f37cc/library/Enemy_Ship_7_1753824720897.png",
+  "https://dcnmwoxzefwqmvvkpqap.supabase.co/storage/v1/object/public/sprite-studio-exports/0f84fe06-5c42-40c3-b563-1a28d18f37cc/library/Enemy_Ship_8_1753824730385.png",
+  "https://dcnmwoxzefwqmvvkpqap.supabase.co/storage/v1/object/public/sprite-studio-exports/0f84fe06-5c42-40c3-b563-1a28d18f37cc/library/Enemy_Ship_9_1753824738269.png"
+];
+
 // --- DoomShroom walk and heal frames ---
 const doomShroomWalkUrls = [
     "https://dcnmwoxzefwqmvvkpqap.supabase.co/storage/v1/object/public/sprite-studio-exports/0f84fe06-5c42-40c3-b563-1a28d18f37cc/library/DoomShroom_Walk_1_1754071862306.png",
@@ -182,6 +195,22 @@ const doomShroomProceduralFallback = () => {
     return c;
 };
 
+// --- Enemy Ship fallback (simple rectangle) ---
+const enemyShipProceduralFallback = () => {
+    const w = 56, h = 44;
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d');
+    ctx.save();
+    ctx.fillStyle = '#444';
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(0, 0, w, h);
+    ctx.restore();
+    return c;
+};
+
 const AssetLoader = {
     assets: {
         coinboyWalkFrames: [],
@@ -193,7 +222,8 @@ const AssetLoader = {
         playerAttackFramesRight: [],
         sideScrollerBGs: [],
         doomShroomWalkFrames: [],
-        doomShroomHealFrames: []
+        doomShroomHealFrames: [],
+        enemyShipFrames: [] // NEW
     },
     loadAssets: async function() {
         const { loadImageWithFallback } = window.utils;
@@ -203,7 +233,6 @@ const AssetLoader = {
         );
         // Roll frames: rotated by 45deg per frame
         this.assets.coinboyRollFrames = this.assets.coinboyWalkFrames.map((img, idx) => {
-            // Create offscreen canvas, rotate
             const { COINBOY_WIDTH, COINBOY_HEIGHT } = window.constants;
             const c = document.createElement('canvas');
             c.width = COINBOY_WIDTH;
@@ -224,46 +253,40 @@ const AssetLoader = {
         );
         // Walk right frames: mirror walk left
         this.assets.playerWalkRightFrames = this.assets.playerWalkLeftFrames.map(img => {
-            const { PLAYER_WIDTH, PLAYER_HEIGHT } = window.constants;
+            // Instead of resizing, just mirror as-is
             const c = document.createElement('canvas');
-            c.width = PLAYER_WIDTH;
-            c.height = PLAYER_HEIGHT;
+            c.width = img.width;
+            c.height = img.height;
             const ctx = c.getContext('2d');
             ctx.save();
-            ctx.translate(PLAYER_WIDTH/2, PLAYER_HEIGHT/2);
+            ctx.translate(img.width/2, img.height/2);
             ctx.scale(-1, 1);
-            ctx.drawImage(img, -PLAYER_WIDTH/2, -PLAYER_HEIGHT/2, PLAYER_WIDTH, PLAYER_HEIGHT);
+            ctx.drawImage(img, -img.width/2, -img.height/2, img.width, img.height);
             ctx.restore();
             return c;
         });
-        // Jump frames
+        // Jump frames - DO NOT resize, just load as-is
         this.assets.playerJumpFrames = await Promise.all(
-            coopJumpUrls.map(src => loadImageWithFallback(src, playerProceduralFallback))
+            coopJumpUrls.map(async (src) => {
+                const img = await loadImageWithFallback(src, playerProceduralFallback);
+                return img;
+            })
         );
-        // Attack frames - make them bigger than walk frames
-        // We'll scale attack frames to 1.6x PLAYER_WIDTH and 1.6x PLAYER_HEIGHT, but keep the player's collision box the same
+        // Attack frames - DO NOT resize, just load as-is
         // LEFT-facing attack frames (original)
         this.assets.playerAttackFramesLeft = await Promise.all(
             coopAttackUrls.map(async (src) => {
-                // Load the image (or fallback)
                 const img = await loadImageWithFallback(src, playerProceduralFallback);
-                // Draw onto a canvas of bigger size
-                const { PLAYER_WIDTH, PLAYER_HEIGHT } = window.constants;
-                const scale = 1.6;
-                const bigW = Math.round(PLAYER_WIDTH * scale);
-                const bigH = Math.round(PLAYER_HEIGHT * scale);
-                const c = document.createElement('canvas');
-                c.width = bigW;
-                c.height = bigH;
-                const ctx = c.getContext('2d');
-                ctx.save();
-                ctx.drawImage(img, 0, 0, bigW, bigH);
-                ctx.restore();
-                return c;
+                return img;
             })
         );
         // RIGHT-facing attack frames (do NOT pre-mirror; mirroring now handled at render time)
         this.assets.playerAttackFramesRight = this.assets.playerAttackFramesLeft;
+
+        // --- Enemy Ship assets (NEW) ---
+        this.assets.enemyShipFrames = await Promise.all(
+            enemyShipFrameUrls.map(src => loadImageWithFallback(src, enemyShipProceduralFallback))
+        );
 
         // --- DoomShroom assets ---
         // Walk frames
@@ -326,6 +349,10 @@ const AssetLoader = {
         // Now both use the same frames, mirroring is done at render time for right
         return this.assets.playerAttackFramesLeft;
     },
+    // --- NEW: Enemy Ship animation frames accessor ---
+    getEnemyShipFrames() {
+        return this.assets.enemyShipFrames;
+    },
     getSideScrollerBGs() {
         return this.assets.sideScrollerBGs;
     },
@@ -335,6 +362,18 @@ const AssetLoader = {
     getDoomShroomHealFrames() {
         return this.assets.doomShroomHealFrames;
     }
+};
+
+// --- PLAYER SPRITE Y OFFSET LOGIC ---
+// This function returns the vertical offset (in pixels) to apply when rendering the player sprite
+// so that the feet of the sprite align with the ground/platform, matching Coinboy/DoomShroom.
+AssetLoader.getPlayerSpriteYOffset = function() {
+    // The player sprite is taller than before, and the feet are not at the bottom of the image.
+    // We want to shift the sprite UP by a fixed amount so the feet are on the ground.
+    // Coinboy and DoomShroom render at (x + w/2, y + h/2) and drawImage(..., -w/2, -h/2, w, h)
+    // The player does the same, so we just need to apply an extra vertical offset.
+    // We'll use the constant PLAYER_GROUND_Y_OFFSET from constants.js.
+    return window.constants.PLAYER_GROUND_Y_OFFSET || 0;
 };
 
 window.AssetLoader = AssetLoader;
